@@ -11,6 +11,7 @@ import InventoryPage from "./pages/InventoryPage";
 import { AuthPage } from "./pages/Auth";
 import { ResetPasswordPage } from "./pages/ResetPassword";
 import { SharedShoppingListPage } from "./pages/SharedShoppingList";
+import GeminiLivePage from "./pages/GeminiLivePage";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App: React.FC = () => {
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/shared/:shareToken" element={<SharedShoppingListPage />} />
+            <Route path="/gemini-live" element={<GeminiLivePage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

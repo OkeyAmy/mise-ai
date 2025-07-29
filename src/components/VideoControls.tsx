@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Video, VideoOff, Mic, MicOff, Volume2, VolumeX, RefreshCw } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, Volume2, VolumeX, RefreshCw, Play, Square, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VideoControlsProps {
@@ -8,11 +8,16 @@ interface VideoControlsProps {
   isCameraOn: boolean;
   isMicOn: boolean;
   isAiMuted: boolean;
+  isRecording: boolean;
+  isConnected: boolean;
   facingMode?: 'environment' | 'user';
   onToggleCamera: () => void;
   onToggleMic: () => void;
   onSwitchCamera: () => void;
   onToggleAiMuted: () => void;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
+  onResetSession: () => void;
 }
 
 const buttonVariants = {
@@ -24,11 +29,16 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
   isCameraOn,
   isMicOn,
   isAiMuted,
+  isRecording,
+  isConnected,
   facingMode = 'environment',
   onToggleCamera,
   onToggleMic,
   onSwitchCamera,
   onToggleAiMuted,
+  onStartRecording,
+  onStopRecording,
+  onResetSession,
 }) => {
   const commonButtonClass = "p-2.5 rounded-full transition-colors duration-200";
   const activeButtonClass = "bg-white/90 text-black";
@@ -96,6 +106,47 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
           {isAiMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
         </motion.button>
       )}
+
+      {/* Recording Controls */}
+      <div className="w-px h-6 bg-white/20 mx-1" /> {/* Separator */}
+      
+      {/* Start/Stop Recording */}
+      <motion.button
+        variants={buttonVariants}
+        whileTap="tap"
+        onClick={isRecording ? onStopRecording : onStartRecording}
+        disabled={!isConnected}
+        className={cn(
+          commonButtonClass,
+          isRecording 
+            ? "bg-red-500 hover:bg-red-600 text-white"
+            : isConnected 
+              ? "bg-green-500 hover:bg-green-600 text-white"
+              : "bg-gray-500 text-gray-300 cursor-not-allowed",
+          !isConnected && "opacity-50"
+        )}
+        aria-label={isRecording ? "Stop recording" : "Start recording"}
+      >
+        {isRecording ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+      </motion.button>
+
+      {/* Reset Session - This button is being removed as per user request */}
+      {/* 
+      <motion.button
+        variants={buttonVariants}
+        whileTap="tap"
+        onClick={onResetSession}
+        disabled={isRecording}
+        className={cn(
+          commonButtonClass,
+          "bg-yellow-500 hover:bg-yellow-600 text-white",
+          isRecording && "opacity-50 cursor-not-allowed"
+        )}
+        aria-label="Reset session"
+      >
+        <RotateCcw className="w-4 h-4" />
+      </motion.button> 
+      */}
     </motion.div>
   );
 }; 

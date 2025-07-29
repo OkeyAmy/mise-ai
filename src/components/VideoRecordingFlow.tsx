@@ -4,226 +4,137 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useABTesting } from '@/hooks/useABTesting';
 import { ConversationOverlay } from './ConversationOverlay';
-import { SimulatedMessage } from '@/data/mockConversation';
 import { motion } from 'framer-motion';
 import { VideoControls } from './VideoControls';
+import useGeminiLive from '@/hooks/useGeminiLive'; // Import the hook
 
 interface VideoRecordingFlowProps {
   onClose: () => void;
-  onVideoRecorded: (videoBlob: Blob) => void;
   isMobile?: boolean;
 }
 
+// System instruction and voice settings from GeminiLivePage.tsx
+const SYSTEM_INSTRUCTION = `You are a helpful AI assistant with vision and hearing capabilities. You can see what the user is showing through their camera and hear what they're saying through their microphone. 
+
+Be conversational, friendly, and helpful. Respond naturally to what you see and hear. If the user shows you something, describe what you see. If they ask questions, answer them clearly and concisely. 
+
+Keep responses relatively brief unless the user asks for detailed explanations. Feel free to ask follow-up questions to better help the user.`;
+
+const VOICE_SETTINGS = {
+  voiceId: 'Orus',
+  languageCode: 'en-US',
+};
+
 export const VideoRecordingFlow: React.FC<VideoRecordingFlowProps> = ({
   onClose,
-  onVideoRecorded,
   isMobile = false,
 }) => {
   const [stage, setStage] = useState<'confirmation' | 'recording'>('confirmation');
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
-  const [currentUserMessage, setCurrentUserMessage] = useState<SimulatedMessage | null>(null);
-  const [currentAiMessage, setCurrentAiMessage] = useState<SimulatedMessage | null>(null);
-  const [inputValue, setInputValue] = useState('');
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('user');
+  
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isAiMuted, setIsAiMuted] = useState(false);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null); // Restored for stable stream reference
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const isSwitchingCameraRef = useRef(false);
   const { toast } = useToast();
   const { currentVideoConfirmation } = useABTesting();
 
+  // State for typed input
+  const [inputValue, setInputValue] = useState('');
+
+  // Integrate the useGeminiLive hook
+  const {
+    isInitialized,
+    isRecording,
+    statusMessage,
+    errorMessage,
+    mediaStream,
+    apiKeyMissing,
+    userTranscript,
+    userTranscriptIsFinal,
+    modelTranscript,
+    modelTranscriptIsFinal,
+    outputGainNode,
+    startRecording: startGeminiStreaming,
+    stopRecording: stopGeminiStreaming,
+    resetSession,
+    setVideoTrackEnabled,
+    sendText, // Assuming useGeminiLive will expose this
+  } = useGeminiLive(SYSTEM_INSTRUCTION, VOICE_SETTINGS);
+
+  const isConnected = isInitialized && !apiKeyMissing;
+
   // Effect to attach the stream to the video element
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    if (videoRef.current && mediaStream) {
+      videoRef.current.srcObject = mediaStream;
     }
-  }, [stream]);
+  }, [mediaStream]);
 
-  useEffect(() => {
-    // Failsafe cleanup on unmount
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
 
-  // Effect for recording timer
+  // Update video track when camera state changes
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-    if (isRecording) {
-      timer = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
+    if (setVideoTrackEnabled) {
+      setVideoTrackEnabled(isCameraOn);
     }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [isRecording]);
+  }, [isCameraOn, setVideoTrackEnabled]);
 
-  const startRecording = async (currentFacingMode: 'user' | 'environment') => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: { ideal: currentFacingMode }
-        },
-        audio: true
-      });
-
-      streamRef.current = mediaStream; // Use ref
-      setStream(mediaStream);
-      setIsCameraOn(true);
-      setIsMicOn(true);
-
-      const mediaRecorder = new MediaRecorder(mediaStream, {
-        mimeType: 'video/webm;codecs=vp9'
-      });
-      
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        if (isSwitchingCameraRef.current) {
-          isSwitchingCameraRef.current = false;
-          return;
-        }
-        
-        const videoBlob = new Blob(chunksRef.current, { type: 'video/webm' });
-        if (videoBlob.size > 0) {
-          onVideoRecorded(videoBlob);
-        }
-        
-        // Full cleanup, using the ref
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-        }
-        setStream(null);
-        setIsRecording(false);
-        onClose();
-      };
-
-      mediaRecorder.start();
-      if (!isRecording) {
-        setIsRecording(true);
+  const handleStartStreaming = async () => {
         setStage('recording');
-        setRecordingTime(0);
-      }
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      toast({
-        title: "Camera Access Denied",
-        description: "Please allow camera access to record video.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const switchCamera = async () => {
-    if (!isRecording) return;
-
-    isSwitchingCameraRef.current = true;
-
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-    
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-
-    // Wait a moment for resources to release
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    const newFacingMode = facingMode === 'user' ? 'environment' : 'user';
-    setFacingMode(newFacingMode);
-    await startRecording(newFacingMode);
+    await startGeminiStreaming(isCameraOn);
   };
 
   const handleStopSession = () => {
-    // This is now the single point of entry for stopping the session.
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop(); // Triggers the onstop event for full cleanup
-    } else {
-      // If not recording, just clean up and close immediately
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
+    stopGeminiStreaming();
       onClose();
-    }
   };
 
   const handleToggleCamera = () => {
-    if (stream) {
-      const videoTracks = stream.getVideoTracks();
-      if (videoTracks.length > 0) {
-        videoTracks.forEach(track => {
-          track.enabled = !track.enabled;
-        });
         setIsCameraOn(prev => !prev);
-      }
-    }
   };
 
   const handleToggleMic = () => {
-    if (stream) {
-      const audioTracks = stream.getAudioTracks();
-      if (audioTracks.length > 0) {
-        audioTracks.forEach(track => {
-          track.enabled = !track.enabled;
+    setIsMicOn(prev => {
+      if (mediaStream) {
+        mediaStream.getAudioTracks().forEach(track => {
+          track.enabled = !prev;
         });
-        setIsMicOn(prev => !prev);
       }
-    }
+      return !prev;
+    });
+  };
+
+  const handleSwitchCamera = async () => {
+    // Basic facing mode toggle. A full implementation would require re-acquiring the stream.
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+    toast({
+      title: "Camera Switch",
+      description: "Full camera switching requires restarting the stream. This feature is for UI demonstration.",
+    });
+  };
+
+  const handleToggleAiMuted = () => {
+    setIsAiMuted(prev => {
+      if (outputGainNode) {
+        outputGainNode.gain.value = !prev ? 0 : 0.7;
+      }
+      return !prev;
+    });
   };
 
   const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
-
-    const newUserMessage: SimulatedMessage = {
-      id: Date.now(),
-      sender: 'user',
-      text: inputValue,
-    };
-    setCurrentUserMessage(newUserMessage);
-    setCurrentAiMessage(null);
+    if (inputValue.trim() && sendText) {
+      sendText(inputValue);
     setInputValue('');
-
-    setTimeout(() => {
-      const aiResponse: SimulatedMessage = {
-        id: Date.now() + 1,
-        sender: 'ai',
-        text: "That's a great question! Let me look into that for you.",
-      };
-      setCurrentAiMessage(aiResponse);
-    }, 1200);
+    }
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   // Confirmation Modal
   if (stage === 'confirmation') {
     return (
       <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-xl flex items-end lg:items-center justify-center p-4">
-        {/* Mobile: Slide up from bottom */}
         <motion.div
           initial={{ opacity: 0, y: isMobile ? '100%' : 20, scale: isMobile ? 1 : 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -231,13 +142,10 @@ export const VideoRecordingFlow: React.FC<VideoRecordingFlowProps> = ({
           transition={{ duration: 0.3, ease: "easeOut" }}
           className="w-full max-w-md lg:max-w-lg bg-white/15 backdrop-blur-lg rounded-2xl lg:rounded-3xl shadow-2xl border border-white/20 p-6 lg:p-8 transform transition-all duration-500 ease-out animate-slide-in-right lg:animate-scale-in"
         >
-          
-          {/* Glowing border effect */}
           <div className="absolute inset-0 rounded-2xl lg:rounded-3xl bg-gradient-to-r from-orange-400/20 via-red-400/20 to-amber-400/20 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
           
-          {/* Close button */}
           <button 
-            onClick={handleStopSession}
+            onClick={onClose}
             aria-label="Close"
             className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200 hover:scale-105"
           >
@@ -245,7 +153,6 @@ export const VideoRecordingFlow: React.FC<VideoRecordingFlowProps> = ({
           </button>
 
           <div className="text-center space-y-6">
-            {/* Title */}
             <div className="space-y-2">
               <motion.h2 
                 initial={{ opacity: 0, y: 10 }}
@@ -261,11 +168,10 @@ export const VideoRecordingFlow: React.FC<VideoRecordingFlowProps> = ({
                 transition={{ delay: 0.2, duration: 0.3 }}
                 className="text-sm lg:text-base text-white/70 font-inter tracking-tight"
               >
-                {currentVideoConfirmation.description}
+                {apiKeyMissing ? "API Key is missing. Please configure it." : (errorMessage || currentVideoConfirmation.description)}
               </motion.p>
             </div>
 
-            {/* Buttons */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -273,16 +179,17 @@ export const VideoRecordingFlow: React.FC<VideoRecordingFlowProps> = ({
               className="flex flex-col lg:flex-row gap-3 lg:gap-4"
             >
               <Button
-                onClick={() => startRecording(facingMode)}
-                className="w-full lg:flex-1 bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 rounded-full py-3 lg:py-4 font-inter tracking-tight transition-all duration-200 hover:scale-105 hover:shadow-lg relative overflow-hidden group"
+                onClick={handleStartStreaming}
+                disabled={!isConnected || apiKeyMissing}
+                className="w-full lg:flex-1 bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 rounded-full py-3 lg:py-4 font-inter tracking-tight transition-all duration-200 hover:scale-105 hover:shadow-lg relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-orange-400/10 to-red-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 <Play className="w-4 h-4 mr-2" />
-                Start Recording
+                Start Streaming
               </Button>
               
               <Button
-                onClick={handleStopSession}
+                onClick={onClose}
                 variant="ghost"
                 className="w-full lg:flex-1 text-white/80 hover:text-white border border-white/20 hover:border-white/40 rounded-full py-3 lg:py-4 font-inter tracking-tight transition-all duration-200 hover:bg-white/10"
               >
@@ -295,7 +202,7 @@ export const VideoRecordingFlow: React.FC<VideoRecordingFlowProps> = ({
     );
   }
 
-  // Recording State
+  // Recording State (now Streaming State)
   if (stage === 'recording') {
     return (
       <div className="fixed inset-0 z-[100] bg-black">
@@ -309,8 +216,11 @@ export const VideoRecordingFlow: React.FC<VideoRecordingFlowProps> = ({
         />
 
         <ConversationOverlay 
-          currentUserMessage={currentUserMessage}
-          currentAiMessage={currentAiMessage}
+          userTranscript={userTranscript}
+          userTranscriptIsFinal={userTranscriptIsFinal}
+          modelTranscript={modelTranscript}
+          modelTranscriptIsFinal={modelTranscriptIsFinal}
+          isRecording={isRecording}
         />
 
         {/* --- Bottom Controls --- */}
@@ -320,14 +230,18 @@ export const VideoRecordingFlow: React.FC<VideoRecordingFlowProps> = ({
             isCameraOn={isCameraOn}
             isMicOn={isMicOn}
             isAiMuted={isAiMuted}
+            isRecording={isRecording}
+            isConnected={isConnected}
             facingMode={facingMode}
             onToggleCamera={handleToggleCamera}
             onToggleMic={handleToggleMic}
-            onSwitchCamera={switchCamera}
-            onToggleAiMuted={() => setIsAiMuted(prev => !prev)}
+            onSwitchCamera={handleSwitchCamera}
+            onToggleAiMuted={handleToggleAiMuted}
+            onStartRecording={handleStartStreaming}
+            onStopRecording={handleStopSession}
+            onResetSession={resetSession}
           />
-
-          {/* Bottom input bar */}
+          
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -336,20 +250,23 @@ export const VideoRecordingFlow: React.FC<VideoRecordingFlowProps> = ({
           >
             <input
               type="text"
-              placeholder="Ask Anything"
+              placeholder="Ask Anything..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSendMessage();
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
               }}
               className="flex-1 bg-transparent text-white placeholder:text-white/50 text-base px-3 py-2 border-none focus:outline-none focus:ring-0"
             />
             <motion.button
               onClick={handleStopSession}
               whileTap={{ scale: 0.95 }}
-              className="px-5 py-2.5 rounded-full bg-white/90 text-black font-semibold flex items-center gap-2"
+              className="px-5 py-2.5 rounded-full bg-red-500 hover:bg-red-600 text-white font-semibold flex items-center gap-2"
             >
-              <div className="w-2.5 h-2.5 bg-black rounded-sm" />
+              <div className="w-2.5 h-2.5 bg-white rounded-sm" />
               Stop
             </motion.button>
           </motion.div>

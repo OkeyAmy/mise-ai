@@ -67,20 +67,6 @@ export const VideoTrigger: React.FC<VideoTriggerProps> = ({
     };
   }, [isMobile, swipeStartX, isSwipeActive]);
 
-  const handleVideoRecorded = (videoBlob: Blob) => {
-    // Handle the recorded video
-    console.log('Video recorded:', videoBlob);
-    
-    // Here you would typically:
-    // 1. Upload the video to your backend
-    // 2. Create a new AI session
-    // 3. Process the video with AI
-    
-    // Removed toast message to eliminate processing step perception.
-    
-    setInternalShowVideoFlow(false);
-  };
-
   const handleClose = () => {
     if (onClose) {
       onClose();
@@ -111,7 +97,6 @@ export const VideoTrigger: React.FC<VideoTriggerProps> = ({
   return videoFlowActive ? (
     <VideoRecordingFlow
       onClose={handleClose}
-      onVideoRecorded={handleVideoRecorded}
       isMobile={isMobile}
     />
   ) : null;
