@@ -42,7 +42,7 @@ export function AuthPage() {
       toast.error(error.message);
     } else {
       toast.success('Logged in successfully!');
-      navigate('/');
+      navigate('/dashboard');
     }
     setLoading(false);
   };
@@ -62,7 +62,7 @@ export function AuthPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     });
     
@@ -80,7 +80,7 @@ export function AuthPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/dashboard`,
       },
     });
     
