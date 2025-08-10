@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowUpRight, Bell, Camera, MessageSquare, Mic, PlusSquare, User, Video } from "lucide-react";
 import { useChatHistory } from "@/hooks/useChatHistory";
+import { DataImportExport } from "@/components/DataImportExport";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
 
 const Dashboard = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -13,6 +15,7 @@ const Dashboard = () => {
   const [history, setHistory] = useState<string[]>([]);
   const navigate = useNavigate();
   const { loadChatSession } = useChatHistory(session);
+  const { isOnline } = useOfflineSync();
 
   useEffect(() => {
     document.title = "Dashboard | Mise AI";
@@ -104,9 +107,9 @@ const Dashboard = () => {
         {/* Feature tiles */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {[
-            { title: "Begin Smart Chat", icon: <MessageSquare className=\"w-6 h-6\" />, to: "/" },
-            { title: "Scan Image For AI", icon: <Camera className=\"w-6 h-6\" />, to: "/image-scan" },
-            { title: "Video Search On AI", icon: <Video className=\"w-6 h-6\" />, to: "/gemini-live" },
+            { title: "Begin Smart Chat", icon: <MessageSquare className="w-6 h-6" />, to: "/" },
+            { title: "Scan Image For AI", icon: <Camera className="w-6 h-6" />, to: "/image-scan" },
+            { title: "Video Search On AI", icon: <Video className="w-6 h-6" />, to: "/gemini-live" },
           ].map((item) => (
             <Card key={item.title} className="relative rounded-3xl p-5 md:p-6 bg-background/60 border border-primary/20 hover:border-primary/40 transition-all backdrop-blur-xl hover:shadow-lg">
               <div className="flex items-center justify-between">
@@ -146,6 +149,15 @@ const Dashboard = () => {
               </button>
             ))}
           </div>
+        </section>
+
+        <section className="mt-8">
+          <DataImportExport session={session} />
+          {!isOnline && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Offline mode: changes will sync when you're back online.
+            </p>
+          )}
         </section>
       </main>
     </div>

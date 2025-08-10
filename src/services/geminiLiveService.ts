@@ -875,6 +875,6 @@ export class GeminiLiveAI {
       console.warn("Cannot send text message, session not active or instance disposed.");
       return;
     }
-    this.session.sendText(text);
+    (this.session as any).sendText?.(text);
   }
 } 
