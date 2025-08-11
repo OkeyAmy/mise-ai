@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
@@ -8,6 +8,7 @@ import { ArrowUpRight, Bell, Camera, MessageSquare, Mic, PlusSquare, User, Video
 import { useChatHistory } from "@/hooks/useChatHistory";
 import { DataImportExport } from "@/components/DataImportExport";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { UserAvatar } from "@/components/UserAvatar";
 
 const Dashboard = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -61,18 +62,13 @@ const Dashboard = () => {
     init();
   }, [loadChatSession]);
 
-  const avatarUrl = useMemo(() => {
-    const local = localStorage.getItem("profile_avatar");
-    return local || "/image.png";
-  }, []);
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/95 text-foreground">
       <header className="relative overflow-hidden p-6 sm:p-8 md:p-10">
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_10%,hsl(var(--primary)/0.25),transparent_60%)]" />
         <div className="flex items-start justify-between relative">
           <button onClick={() => navigate("/profile")} className="flex items-center gap-3 hover-scale">
-            <img src={avatarUrl} alt="Profile avatar" className="w-12 h-12 rounded-full border border-primary/30 shadow-md" />
+            <UserAvatar session={session} size={48} />
           </button>
           <button onClick={() => navigate("/notifications")} className="relative p-3 rounded-full border border-primary/30 bg-background/40 backdrop-blur-md hover:bg-primary/10 transition-colors">
             <Bell className="w-5 h-5 text-primary" />
