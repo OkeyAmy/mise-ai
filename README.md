@@ -6,6 +6,9 @@ A smart, AI-assisted meal planner that learns your preferences, understands what
 
 ![Mise AI](public/image.png)
 
+You can try the Mise AI agent on Agentverse  
+<https://agentverse.ai/agents/details/agent1qt354vjymslddeu26y2zgtxjm27cpv3035xwmlyll7nyf38ez68s5w3w687/profile>
+
 ## Highlights
 
 - Personalized meal suggestions that respect dietary preferences, allergies, and nutrition goals.
@@ -17,6 +20,7 @@ A smart, AI-assisted meal planner that learns your preferences, understands what
 ## What's in `mise-asi`
 
 `mise-asi/` is a Python/Flask service that replaces the old Supabase edge proxy. It:
+
 - Exposes `/health`, `/chat`, and `/tools` endpoints for the React app (`src/hooks/chat/asiProxy.ts`).
 - Runs an orchestrator that calls an OpenAI-compatible ASI Cloud model with the full tool registry.
 - Dispatches function calls to domain handlers (inventory, shopping list, meals, preferences, leftovers, notes, Amazon search placeholder).
@@ -80,9 +84,11 @@ Orchestrator (OpenAI client -> ASI Cloud)
 
 1. Install deps: `npm install`
 2. Configure `.env.local` (defaults to localhost if omitted):
+
    ```env
    VITE_ASI_ENDPOINT=http://localhost:8001
    ```
+
 3. Start Vite dev server: `npm run dev`
 4. Open `http://localhost:5173`
 
@@ -92,6 +98,7 @@ Orchestrator (OpenAI client -> ASI Cloud)
 2. (Optional) Create a venv: `python -m venv .venv && .venv\Scripts\activate`
 3. Install deps: `pip install -r requirements.txt`
 4. Create `.env` (see `.env.example`):
+
    ```env
    PORT=8001
    FLASK_ENV=development
@@ -102,16 +109,19 @@ Orchestrator (OpenAI client -> ASI Cloud)
    MODEL_NAME=openai/gpt-oss-20b
    AGENT_SEED=mise-asi-agent-seed-phrase
    ```
+
 5. Start the server: `python main.py`
 6. Check health: `curl http://localhost:8001/health`
 
 ## Supabase setup (optional local dev)
 
 If you want to run Supabase locally instead of the hosted project:
+
 ```bash
 npx supabase init
 npx supabase db push     # apply migrations in supabase/migrations
 ```
+
 Ensure the tables mentioned above exist; the handlers expect them.
 
 ## Tool coverage (server-side)
