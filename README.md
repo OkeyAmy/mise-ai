@@ -1,327 +1,136 @@
-# 🍽️ Mise AI - Your Personalized Nutrition Assistant
+# Mise AI - Personalized Nutrition Assistant
 
-> **Mise** (pronounced "MEEZ") - French culinary term meaning "everything in its place"
+> Mise (pronounced "meez") is the kitchen term for "everything in its place" - this app keeps your meals, pantry, and shopping just as organized.
 
-A smart AI-powered nutrition assistant that provides personalized meal suggestions, manages your food inventory, tracks leftovers, and helps reduce food waste through intelligent meal planning.
+A smart, AI-assisted meal planner that learns your preferences, understands what is in your kitchen, suggests meals that minimize waste, and keeps leftovers and shopping lists in sync. The project now includes a dedicated ASI orchestration service (`mise-asi/`) so the heavy AI/tool-calling logic runs server-side.
 
-![Mise AI](public\image.png)
+![Mise AI](public/image.png)
 
-## 🌟 Key Features
+## Highlights
 
-### 🎯 **Personalized Meal Suggestions**
-- AI analyzes your dietary preferences, restrictions, and goals
-- Considers available ingredients and cooking time
-- Adapts to your cultural background and family size
-- Learns from your meal ratings and feedback
+- Personalized meal suggestions that respect dietary preferences, allergies, and nutrition goals.
+- Pantry and shopping list management backed by Supabase (inventory, leftovers, preferences, notes).
+- Parallel tool execution for faster responses and richer context gathering.
+- Leftover tracking with portion adjustments to cut food waste.
+- Server-side orchestration layer (`mise-asi`) that mirrors the frontend toolset and exposes a simple HTTP API.
 
-### 📦 **Smart Inventory Management**
-- Track pantry and refrigerator contents
-- Get meal suggestions based on available ingredients
-- Automatic expiration tracking and reminders
-- Reduce food waste through intelligent planning
+## What's in `mise-asi`
 
-### 🍜 **Leftover Optimization**
-- Track leftover meals and portions
-- Smart suggestions to use leftovers before they spoil
-- Portion management for families
-- Reduce food waste and save money
+`mise-asi/` is a Python/Flask service that replaces the old Supabase edge proxy. It:
+- Exposes `/health`, `/chat`, and `/tools` endpoints for the React app (`src/hooks/chat/asiProxy.ts`).
+- Runs an orchestrator that calls an OpenAI-compatible ASI Cloud model with the full tool registry.
+- Dispatches function calls to domain handlers (inventory, shopping list, meals, preferences, leftovers, notes, Amazon search placeholder).
+- Persists and reads data from Supabase tables (`user_inventory`, `shopping_lists`, `user_preferences`, `user_leftovers`).
 
-### 🛒 **Intelligent Shopping Lists**
-- Auto-generate shopping lists from meal suggestions
-- Track missing ingredients for recipes
-- Organize by store categories
-- Sync with meal planning
-
-### ⚡ **Parallel Function Execution**
-- Lightning-fast responses through simultaneous data processing
-- 3-5x faster than traditional sequential AI assistants
-- Comprehensive context gathering in single requests
-
-## 🚀 How Mise Works
-
-### **Example Interactions:**
-
-**User:** *"What should I cook for dinner?"*
-
-**Mise processes in parallel:**
-1. `getCurrentTime` - Confirms it's dinner time
-2. `getLeftovers` - Checks for existing food to use first
-3. `getInventory` - Reviews available ingredients
-4. `getUserPreferences` - Considers dietary restrictions & goals
-
-**Result:** *"I see you have leftover chicken curry from yesterday (2 servings). Would you like to reheat that, or shall I suggest something fresh using your available ingredients?"*
-
----
-
-**User:** *"I'm vegetarian now, and I want to eat more protein"*
-
-**Mise responds:**
-1. Detects new dietary preference
-2. Asks: *"Would you like me to update your profile to vegetarian and add high-protein as a goal?"*
-3. Updates preferences after confirmation
-4. Suggests protein-rich vegetarian meals
-
-## 🛠 Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| **Frontend** | React 18, TypeScript, Tailwind CSS |
-| **UI Components** | shadcn/ui, Radix UI |
-| **Backend** | Supabase (PostgreSQL, Edge Functions) |
-| **AI/LLM** | Google Gemini 1.5 Pro with Function Calling |
-| **Authentication** | Supabase Auth |
-| **State Management** | React Hooks, Custom Hooks |
-| **Build Tool** | Vite |
-| **Deployment** | Lovable Platform |
-
-## 🏗 Architecture
+### Architecture (high level)
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   React Client  │    │  Supabase Edge   │    │  Google Gemini  │
-│                 │    │    Functions     │    │      API        │
-│  • UI Components│◄──►│                  │◄──►│                 │
-│  • State Mgmt   │    │  • Gemini Proxy  │    │  • Function     │
-│  • Function     │    │  • CORS Headers  │    │    Calling      │
-│    Handlers     │    │  • API Key Mgmt  │    │  • System       │
-└─────────────────┘    └──────────────────┘    │    Instructions │
-         │                        │             └─────────────────┘
-         │                        │
-         ▼                        ▼
-┌─────────────────┐    ┌──────────────────┐
-│   Supabase DB   │    │   Function       │
-│                 │    │   Handlers       │
-│  • User Prefs   │    │                  │
-│  • Inventory    │◄──►│  • Parallel      │
-│  • Leftovers    │    │    Execution     │
-│  • Shopping     │    │  • Data          │
-│    Lists        │    │    Processing    │
-└─────────────────┘    └──────────────────┘
+React + Vite UI (chat, pantry, leftovers)
+   |
+   | HTTP (VITE_ASI_ENDPOINT)
+   v
+Flask adapter (/chat, /tools, /health)
+   |
+   v
+Orchestrator (OpenAI client -> ASI Cloud)
+   |
+   |-- Tool registry (OpenAI function schemas)
+   `-- Handlers (inventory, shopping list, preferences, leftovers, meals, notes, Amazon)
+           |
+           v
+     Supabase Postgres
 ```
 
-## 🔧 Installation & Setup
+### Key backend files
 
-### Prerequisites
-- Node.js 18+ and npm
-- Supabase account
-- Google AI (Gemini) API key
+- `mise-asi/main.py` - entrypoint that validates env vars and boots Flask.
+- `mise-asi/adapters/flask_app.py` - HTTP adapter, CORS, routes.
+- `mise-asi/orchestration/orchestrator.py` - chat loop, OpenAI-compatible calls, tool execution.
+- `mise-asi/registry/` - tool definitions grouped by domain.
+- `mise-asi/handlers/` - executes tool calls and formats responses.
+- `mise-asi/utils/supabase_client.py` - Supabase client and CRUD helpers.
+- `mise-asi/config/settings.py` - environment-driven settings.
 
-### 1. Clone Repository
+## Project structure
+
+```
+.
+|-- src/                      # React app (chat, UI, hooks)
+|   `-- hooks/chat/asiProxy.ts # Frontend -> mise-asi bridge
+|-- supabase/                 # Supabase config, migrations, edge function legacy
+|-- public/                   # Static assets (screenshot)
+|-- mise-asi/                 # ASI orchestration service (Python/Flask)
+|   |-- adapters/             # HTTP adapter
+|   |-- orchestration/        # Orchestrator and types
+|   |-- registry/             # Tool schemas
+|   |-- handlers/             # Domain handlers
+|   |-- utils/                # Supabase + logging helpers
+|   `-- config/               # Settings and env validation
+`-- package.json, vite.config.ts, etc.
+```
+
+## Prerequisites
+
+- Node.js 18+
+- Python 3.10+ (for `mise-asi`)
+- Supabase project (tables: `user_inventory`, `shopping_lists`, `user_preferences`, `user_leftovers`)
+- ASI Cloud/OpenAI-compatible API key
+
+## Running the frontend
+
+1. Install deps: `npm install`
+2. Configure `.env.local` (defaults to localhost if omitted):
+   ```env
+   VITE_ASI_ENDPOINT=http://localhost:8001
+   ```
+3. Start Vite dev server: `npm run dev`
+4. Open `http://localhost:5173`
+
+## Running `mise-asi` locally
+
+1. `cd mise-asi`
+2. (Optional) Create a venv: `python -m venv .venv && .venv\Scripts\activate`
+3. Install deps: `pip install -r requirements.txt`
+4. Create `.env` (see `.env.example`):
+   ```env
+   PORT=8001
+   FLASK_ENV=development
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_KEY=your_supabase_service_key
+   ASICLOUD_API_KEY=your_asi_cloud_key
+   ASICLOUD_BASE_URL=https://inference.asicloud.cudos.org/v1
+   MODEL_NAME=openai/gpt-oss-20b
+   AGENT_SEED=mise-asi-agent-seed-phrase
+   ```
+5. Start the server: `python main.py`
+6. Check health: `curl http://localhost:8001/health`
+
+## Supabase setup (optional local dev)
+
+If you want to run Supabase locally instead of the hosted project:
 ```bash
-git clone https://github.com/OkeyAmy/mise-ai.git
-cd mise-ai
-```
-
-### 2. Install Dependencies
-```bash
-npm install
-```
-
-### 3. Environment Setup
-Create `.env.local` file:
-```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-GEMINI_API_KEY=your_gemini_api_key
-```
-
-### 4. Database Setup
-```bash
-# Initialize Supabase
 npx supabase init
-
-# Run migrations
-npx supabase db push
-
-# Deploy edge functions
-npx supabase functions deploy gemini-proxy
+npx supabase db push     # apply migrations in supabase/migrations
 ```
+Ensure the tables mentioned above exist; the handlers expect them.
 
-### 5. Start Development Server
-```bash
-npm run dev
-```
+## Tool coverage (server-side)
 
-Visit `http://localhost:5173` to see the application.
+- Utility: current time.
+- Inventory: get, create/update/delete items, categorize and format inventory for the model.
+- Shopping list: view/add/remove items, UI "open" command.
+- Preferences: read/update/create dietary preferences and goals.
+- Leftovers: manage servings, add/remove/update leftovers, UI "open" command.
+- Meals: format model-generated meal suggestions and update meal plans.
+- Notes: store freeform user notes.
+- Amazon search: placeholder responses; wire up RapidAPI + keys to enable real calls.
 
-## 📁 Project Structure
+## Deployment notes
 
-```
-src/
-├── components/          # UI Components
-│   ├── Chatbot.tsx     # Main chat interface
-│   ├── InventoryManager.tsx
-│   ├── ShoppingList.tsx
-│   └── ...
-├── hooks/              # Custom React Hooks
-│   ├── useChat.ts      # Main chat logic
-│   ├── chat/
-│   │   ├── functionHandlers.ts
-│   │   ├── geminiProxy.ts
-│   │   └── handlers/   # Individual function handlers
-│   └── ...
-├── lib/                # Core Logic
-│   ├── gemini/         # AI integration
-│   │   ├── api.ts
-│   │   └── tools.ts
-│   ├── functions/      # Function definitions
-│   ├── prompts/        # AI prompts
-│   └── schemas/        # Data schemas
-├── data/
-│   └── schema.ts       # TypeScript interfaces
-└── integrations/
-    └── supabase/       # Database client
-```
-
-## 🔥 Key Features Deep Dive
-
-### **Parallel Function Execution**
-
-Mise revolutionizes AI assistant performance through parallel function calling:
-
-```typescript
-// Traditional AI: Sequential calls (slow)
-await getUserPreferences();
-await getInventory();
-await getLeftovers();
-await getCurrentTime();
-
-// Mise: Parallel execution (3-5x faster)
-const [preferences, inventory, leftovers, time] = await Promise.all([
-  getUserPreferences(),
-  getInventory(), 
-  getLeftovers(),
-  getCurrentTime()
-]);
-```
-
-### **Smart Function Selection**
-
-Based on user intent, Mise automatically determines which functions to call:
-
-| User Query | Functions Called (Parallel) |
-|------------|---------------------------|
-| "What should I cook?" | `getCurrentTime` + `getLeftovers` + `getInventory` + `getUserPreferences` |
-| "What do you know about me?" | `getUserPreferences` + `getLeftovers` + `getInventory` + `getShoppingList` |
-| "Plan my shopping" | `getUserPreferences` + `getInventory` + `getShoppingList` + `getCurrentTime` |
-
-### **Contextual Meal Suggestions**
-
-Every suggestion considers:
-- ⏰ Current time (breakfast/lunch/dinner)
-- 🥘 Available ingredients and quantities
-- 🍽️ Existing leftovers to minimize waste
-- 🎯 Personal dietary goals and restrictions
-- 🌍 Cultural preferences and cuisines
-- 👨‍👩‍👧‍👦 Family size and meal portions
-
-## 🧪 Testing
-
-```bash
-# Run tests
-npm test
-
-# Run with coverage
-npm run test:coverage
-
-# E2E tests
-npm run test:e2e
-```
-
-## 📈 Performance
-
-- **Initial Load**: < 2s
-- **Function Execution**: 200-500ms (parallel)
-- **LLM Response Time**: 1-3s
-- **Database Queries**: < 100ms
-- **Overall UX**: Near real-time responses
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-- Follow TypeScript best practices
-- Use semantic commit messages
-- Write tests for new features
-- Update documentation
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Google Gemini** for advanced AI capabilities
-- **Supabase** for seamless backend infrastructure
-- **shadcn/ui** for beautiful, accessible components
-- **Tailwind CSS** for utility-first styling
-
-## 🔐 Security Features
-
-- **API Key Management**: Secure server-side handling via Supabase Edge Functions
-- **User Authentication**: Row-level security with Supabase Auth
-- **Data Privacy**: User data isolated per account
-- **Input Validation**: Sanitized function parameters
-- **Rate Limiting**: Protection against API abuse
-
-## 🌍 Multi-Cultural Support
-
-Mise supports diverse dietary preferences and cuisines:
-- **Cultural Heritage**: Nigerian, Indian, Chinese, Mediterranean, etc.
-- **Dietary Restrictions**: Vegetarian, Vegan, Halal, Kosher, Gluten-free
-- **Regional Ingredients**: Local availability considerations
-- **Family Traditions**: Respects cultural meal patterns
-
-## 📱 Responsive Design
-
-- **Mobile-First**: Optimized for mobile cooking scenarios
-- **Tablet Support**: Perfect for kitchen countertop use
-- **Desktop Experience**: Full-featured interface for meal planning
-- **PWA Ready**: Installable web app for easy access
-
-## 🚀 Live Demo
-
-Try Mise AI live at: [mise-ai.lovable.app](https://mise-ai.lovable.app)
-
-### Demo Features Available:
-- ✅ Chat with Mise about meal preferences
-- ✅ Add ingredients to your inventory
-- ✅ Get personalized meal suggestions
-- ✅ Track leftovers and shopping lists
-- ✅ Experience parallel function execution
-
-## 📞 Support & Community
-
-- 🐛 **Issues**: [GitHub Issues](https://github.com/OkeyAmy/mise-ai/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/OkeyAmy/mise-ai/discussions)
-- 📧 **Email**: support@mise-ai.com
-- 🔗 **Live Demo**: [mise-ai.lovable.app](https://mise-ai.lovable.app)
-
-## 🗺️ Roadmap
-
-### 🎯 Next Release (v1.1)
-- [ ] Recipe step-by-step cooking instructions
-- [ ] Voice interaction support
-- [ ] Nutritional analysis dashboard
-- [ ] Meal photo recognition
-
-### 🚀 Future Versions
-- [ ] Social meal sharing features
-- [ ] Grocery delivery API integration
-- [ ] Smart kitchen appliance connectivity
-- [ ] Multi-language support
+- Point `VITE_ASI_ENDPOINT` to the deployed `mise-asi` host.
+- `mise-asi` can be served with gunicorn: `gunicorn -w 4 -b 0.0.0.0:8001 main:app`.
+- Keep Supabase service keys server-side; the frontend only calls the orchestrator.
 
 ---
 
-### ⭐ Star this repository if you find it helpful!
-
-**Built with ❤️ for healthier, smarter eating**
-
-*Mise AI - Everything in its place, every meal perfectly planned.*
-
-**Happy cooking! 🍳**
+Built to help keep every meal, ingredient, and leftover in its place. Enjoy!
