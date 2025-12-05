@@ -6,6 +6,10 @@ A smart, AI-assisted meal planner that learns your preferences, understands what
 
 ![Mise AI](public/image.png)
 
+You can try the Mise AI agent on Agentverse  
+https://agentverse.ai/agents/details/agent1qt354vjymslddeu26y2zgtxjm27cpv3035xwmlyll7nyf38ez68s5w3w687/profile
+
+
 ## Highlights
 
 - Personalized meal suggestions that respect dietary preferences, allergies, and nutrition goals.
