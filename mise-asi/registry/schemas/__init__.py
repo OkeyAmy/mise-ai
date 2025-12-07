@@ -45,6 +45,11 @@ from .amazon_search_tools import (
     get_amazon_search_results_tool,
     clear_amazon_search_cache_tool,
 )
+from .membase_tools import (
+    save_memory_tool,
+    retrieve_memory_tool,
+    search_knowledge_base_tool,
+)
 
 __all__ = [
     # Utility

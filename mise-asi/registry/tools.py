@@ -5,6 +5,10 @@ Aggregates all tool definitions - Maps to: src/lib/gemini/tools.ts
 from .schemas import (
     # Utility
     get_current_time_tool,
+    # MemBase
+    save_memory_tool,
+    retrieve_memory_tool,
+    search_knowledge_base_tool,
     # Inventory
     update_inventory_tool,
     get_inventory_tool,
@@ -97,6 +101,11 @@ TOOLS = [
     search_multiple_amazon_products_tool,
     get_amazon_search_results_tool,
     clear_amazon_search_cache_tool,
+    
+    # MemBase tools
+    save_memory_tool,
+    retrieve_memory_tool,
+    search_knowledge_base_tool,
 ]
 
 

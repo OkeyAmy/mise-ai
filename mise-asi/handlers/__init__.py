@@ -11,6 +11,7 @@ from .preferences_handlers import handle_preferences_functions
 from .leftovers_handlers import handle_leftovers_functions
 from .notes_handlers import handle_notes_functions
 from .amazon_search_handlers import handle_amazon_search_functions
+from .membase_handlers import handle_membase_functions
 
 
 # Function handler mapping - matches functionHandlers in functionHandlers.ts
@@ -64,6 +65,11 @@ FUNCTION_HANDLERS = {
     "searchMultipleAmazonProducts": handle_amazon_search_functions,
     "getAmazonSearchResults": handle_amazon_search_functions,
     "clearAmazonSearchCache": handle_amazon_search_functions,
+    
+    # MemBase
+    "saveMemory": handle_membase_functions,
+    "retrieveMemory": handle_membase_functions,
+    "searchKnowledgeBase": handle_membase_functions,
 }
 
 

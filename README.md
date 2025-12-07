@@ -110,8 +110,17 @@ Orchestrator (OpenAI client -> ASI Cloud)
    AGENT_SEED=mise-asi-agent-seed-phrase
    ```
 
-5. Start the server: `python main.py`
-6. Check health: `curl http://localhost:8001/health`
+5. Start the Flask server (API & Orchestrator): `python main.py`
+6. (Optional) Start the uAgent runner (Standalone Agent): `python -m uagent.runner`
+   - This runs the agent as a separate process, useful for decentralized communication.
+7. Check health: `curl http://localhost:8001/health`
+
+## Deployment
+
+The system is deployed on **AgentVerse**.
+
+- **Frontend**: Deployed on Vercel (or similar).
+- **Backend**: `mise-asi` runs on a cloud provider (e.g., Render, AWS) and connects to AgentVerse for agent discovery.
 
 ## Supabase setup (optional local dev)
 

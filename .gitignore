@@ -49,5 +49,6 @@ env
 AGENT_ECOSYSTEM_DOCS.md
 AI_AGENT_ECOSYSTEM.md
 asi-samples
+asi-samples/
 GOOGLE_AUTH_SETUP.md
 mise-asi/.env
