@@ -63,11 +63,6 @@ interface MobileChatInputProps {
   onFeedback: () => void;
 }
 
-interface ChatMessageListProps {
-  messages: Message[];
-  isThinking: boolean;
-  setThoughtSteps: (steps: ThoughtStep[] | ((prev: ThoughtStep[]) => ThoughtStep[])) => void; // Add missing prop
-}
 
 const MobileChatInput = ({ inputValue, setInputValue, handleSendMessage, isThinking, onReset, onFeedback }: MobileChatInputProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -400,7 +395,7 @@ export const MobileChatInterface = ({
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto pt-16 pb-32"> {/* Increased padding-bottom */}
         <div className="px-4">
-          <ChatMessageList messages={messages} isThinking={isThinking} setThoughtSteps={setThoughtSteps} />
+          <ChatMessageList messages={messages} isThinking={isThinking} />
         </div>
         <div ref={messagesEndRef} />
       </div>

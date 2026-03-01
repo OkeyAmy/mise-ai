@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Package, LogOut, Utensils } from "lucide-react";
+import { ShoppingCart, Package, LogOut, Utensils, Video } from "lucide-react";
 import { Logo } from '@/components/Logo';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,6 +64,16 @@ export const Header = ({ onShoppingListOpen, onLeftoversOpen, onVideoTrigger, is
               >
                 <Utensils className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
                 <span className="hidden xs:inline sm:inline">Leftovers</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/gemini-live')}
+                size="sm"
+                className="px-2 sm:px-4 text-xs sm:text-sm glass-pill bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30"
+                aria-label="AI Video Chat"
+              >
+                <Video className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                <span className="hidden xs:inline sm:inline">AI Chat</span>
               </Button>
               <Button 
                 variant="ghost" 
